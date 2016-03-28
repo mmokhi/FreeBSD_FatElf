@@ -96,6 +96,10 @@ static int __elfN(load_file)(struct proc *p, const char *file, u_long *addr,
 static int __elfN(load_section)(struct image_params *imgp, vm_offset_t offset,
     caddr_t vmaddr, size_t memsz, size_t filsz, vm_prot_t prot,
     size_t pagesize);
+static int __CONCAT(fat, __elfN(extract_record))(struct vnode *vp,
+		const FatElf_FEhdr *fhdr, FatElf_record *record);
+static int __CONCAT(fat, __elfN(elfpart_extract))(struct image_params *imgp,
+		Elf_Ehdr *elf_part);
 static int __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp);
 static boolean_t __elfN(freebsd_trans_osrel)(const Elf_Note *note,
     int32_t *osrel);
@@ -730,8 +734,8 @@ fail:
 }
 
 static int
-fatelf_extract_record(struct vnode *vp, const FatElf_FEhdr *fhdr,
-        FatElf_record *record)
+__CONCAT(fat, __elfN(extract_record))(struct vnode *vp,
+		const FatElf_FEhdr *fhdr, FatElf_record *record)
 {
 	int i = 0;
 	struct thread *td = curthread;
@@ -760,7 +764,8 @@ fatelf_extract_record(struct vnode *vp, const FatElf_FEhdr *fhdr,
 }
 
 static int
-fatelf_elfpart_extract(struct image_params *imgp, Elf_Ehdr *elf_part)
+__CONCAT(fat, __elfN(elfpart_extract))(struct image_params *imgp,
+		Elf_Ehdr *elf_part)
 {
 	struct vnode *vp = imgp->vp;
 	struct thread *td = curthread;
