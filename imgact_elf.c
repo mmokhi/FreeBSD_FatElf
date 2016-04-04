@@ -29,7 +29,7 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/kern/imgact_elf.c 292749 2015-12-26 15:40:12Z kib $");
+__FBSDID("$FreeBSD: head/sys/kern/imgact_elf.c 297391 2016-03-29 13:56:59Z trasz $");
 
 #include "opt_capsicum.h"
 #include "opt_compat.h"
@@ -40,7 +40,7 @@ __FBSDID("$FreeBSD: head/sys/kern/imgact_elf.c 292749 2015-12-26 15:40:12Z kib $
 #include <sys/exec.h>
 #include <sys/fcntl.h>
 #include <sys/gzio.h>
-#include "elf_fat.h" /* FIXME Should change it to <sys/elf_fat.h> */
+#include <sys/elf_fat.h>
 #include <sys/imgact.h>
 #include <sys/imgact_elf.h>
 #include <sys/jail.h>
@@ -263,7 +263,7 @@ __elfN(get_brandinfo)(struct image_params *imgp, const char *interp,
     int interp_name_len, int32_t *osrel)
 {
 	const Elf_Ehdr *hdr = (const Elf_Ehdr *)imgp->image_header;
-	Elf_Brandinfo *bi;
+	Elf_Brandinfo *bi, *bi_m;
 	boolean_t ret;
 	int i;
 
@@ -275,6 +275,7 @@ __elfN(get_brandinfo)(struct image_params *imgp, const char *interp,
 	 */
 
 	/* Look for an ".note.ABI-tag" ELF section */
+	bi_m = NULL;
 	for (i = 0; i < MAX_BRANDS; i++) {
 		bi = elf_brand_list[i];
 		if (bi == NULL)
@@ -285,10 +286,28 @@ __elfN(get_brandinfo)(struct image_params *imgp, const char *interp,
 			/* Give brand a chance to veto check_note's guess */
 			if (ret && bi->header_supported)
 				ret = bi->header_supported(imgp);
+			/*
+			 * If note checker claimed the binary, but the
+			 * interpreter path in the image does not
+			 * match default one for the brand, try to
+			 * search for other brands with the same
+			 * interpreter.  Either there is better brand
+			 * with the right interpreter, or, failing
+			 * this, we return first brand which accepted
+			 * our note and, optionally, header.
+			 */
+			if (ret && bi_m == NULL && (strlen(bi->interp_path) +
+			    1 != interp_name_len || strncmp(interp,
+			    bi->interp_path, interp_name_len) != 0)) {
+				bi_m = bi;
+				ret = 0;
+			}
 			if (ret)
 				return (bi);
 		}
 	}
+	if (bi_m != NULL)
+		return (bi_m);
 
 	/* If the executable has a brand, search for it in the brand list. */
 	for (i = 0; i < MAX_BRANDS; i++) {
@@ -737,7 +756,7 @@ static int
 __CONCAT(fat, __elfN(extract_record))(struct vnode *vp,
 		const FatElf_FEhdr *fhdr, FatElf_record *record)
 {
-	int i = 0;
+	int i;
 	struct thread *td = curthread;
 
 	for (i = 0; i < le32toh(fhdr->fe_nrecords); ++i) {
@@ -767,11 +786,15 @@ static int
 __CONCAT(fat, __elfN(elfpart_extract))(struct image_params *imgp,
 		Elf_Ehdr *elf_part)
 {
-	struct vnode *vp = imgp->vp;
-	struct thread *td = curthread;
-	const FatElf_FEhdr *header = imgp->image_header;
+	struct vnode *vp;
+	struct thread *td;
+	const FatElf_FEhdr *header;
 	FatElf_record record;
-	int error = 0;
+	int error = 0; /* default value, used to determine errors in conditions below */
+
+	vp = imgp->vp;
+	td = curthread;
+	header = (const FatElf_FEhdr *) imgp->image_header;
 
 	error = fatelf_extract_record(vp, header, &record);
 	if (error != 0) {
@@ -811,7 +834,7 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 			printf("Bad FatElf format, error = %d", error);
 			return ENOEXEC;
 		}
-		hdr = &elf_part;
+		hdr = (const Elf_Ehdr *) &elf_part;
 	} else {
 		hdr = (const Elf_Ehdr *)imgp->image_header;
 	}
@@ -1419,10 +1442,6 @@ __elfN(coredump)(struct thread *td, struct vnode *vp, off_t limit, int flags)
 	 * and write it out following the notes.
 	 */
 	hdr = malloc(hdrsize, M_TEMP, M_WAITOK);
-	if (hdr == NULL) {
-		error = EINVAL;
-		goto done;
-	}
 	error = __elfN(corehdr)(&params, seginfo.count, hdr, hdrsize, &notelst,
 	    notesz);
 
