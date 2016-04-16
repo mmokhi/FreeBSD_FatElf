@@ -36,17 +36,18 @@
 #include <sys/elf.h>
 
 /* Values for the magic number bytes. */
-#define	FATELF_MAG0		0xFa
-#define	FATELF_MAG1		't'
-#define	FATELF_MAG2		0x0E
-#define	FATELF_MAG3		0x1f
+#define	FATELF_MAG0	0xFa
+#define	FATELF_MAG1	't'
+#define	FATELF_MAG2	0x0E
+#define	FATELF_MAG3	0x1f
 #define	FATELF_MAGIC	"\xFat\x0E\x1f"	/* magic string */
-#define	FATELF_MAG_LEN		4		/* magic string size */
+#define	FATELF_MAG_LEN	4		/* magic string size */
 
-#define	IS_FATELF(fehdr)	((fehdr).fe_magic[EI_MAG0] == FATELF_MAG0 && \
-			 (fehdr).fe_magic[EI_MAG1] == FATELF_MAG1 && \
-			 (fehdr).fe_magic[EI_MAG2] == FATELF_MAG2 && \
-			 (fehdr).fe_magic[EI_MAG3] == FATELF_MAG3)
+#define	IS_FATELF(fehdr)
+			((fehdr).fe_magic[EI_MAG0] == FATELF_MAG0 && \
+			(fehdr).fe_magic[EI_MAG1] == FATELF_MAG1 && \
+			(fehdr).fe_magic[EI_MAG2] == FATELF_MAG2 && \
+			(fehdr).fe_magic[EI_MAG3] == FATELF_MAG3)
 
 typedef struct {
 	unsigned char fe_magic[4]; /* always SHOULD BE FATELF_MAGIC */
@@ -58,7 +59,7 @@ typedef struct {
 	unsigned char ei_class;
 	unsigned char ei_data;
 	unsigned char ei_version;
-	unsigned char ei_osabi; /* XXX actually NOT used, just for the sake of alignment XXX */
+	unsigned char ei_osabi; /* XXX NOT used, just for alignment XXX */
 
 	uint32_t e_version; /* ELF format version. */
 
