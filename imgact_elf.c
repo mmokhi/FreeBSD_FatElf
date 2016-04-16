@@ -753,29 +753,32 @@ fail:
 }
 
 static int
-__CONCAT(fat, __elfN(extract_record))(struct vnode *vp,
-		const FatElf_FEhdr *fhdr, FatElf_record *record)
+__CONCAT(fat, __elfN(extract_record))
+    (struct vnode *vp, const FatElf_FEhdr *fhdr, FatElf_record *record)
 {
 	int i;
 	struct thread *td = curthread;
 
 	for (i = 0; i < le32toh(fhdr->fe_nrecords); ++i) {
-		int error = vn_rdwr(UIO_READ, vp, record, sizeof(*record), sizeof(*fhdr)
-		        + sizeof(*record) * i, UIO_SYSSPACE, IO_NODELOCKED, td->td_ucred,
-		        NOCRED, NULL, td);
+		int error = vn_rdwr(UIO_READ, vp, record, sizeof(*record),
+		    sizeof(*fhdr) + sizeof(*record) * i, UIO_SYSSPACE,
+		    IO_NODELOCKED, td->td_ucred, NOCRED, NULL, td);
 		if (error != 0) {
 			printf("vn_rdwr error: %d\n", error);
 			return error;
 		}
 
-		Elf_Ehdr hdr = { .e_ident[EI_CLASS] = record->ei_class,
-				.e_ident[EI_DATA] = record->ei_data,
-				.e_ident[EI_VERSION] = record->ei_version,
-				.e_version = record->e_version, .e_machine = record->e_machine,
-				.e_phentsize = record->e_phentsize };
+		Elf_Ehdr hdr = {
+			.e_ident[EI_CLASS] = record->ei_class,
+			.e_ident[EI_DATA] = record->ei_data,
+			.e_ident[EI_VERSION] = record->ei_version,
+			.e_version = record->e_version,
+			.e_machine = record->e_machine,
+			.e_phentsize = record->e_phentsize
+		};
 
-		if (__elfN(check_header)(hdr) == 0 && (hdr->e_type == ET_EXEC
-				|| hdr->e_type == ET_DYN))
+		if (__elfN(check_header)(hdr) == 0 &&
+		    (hdr->e_type == ET_EXEC || hdr->e_type == ET_DYN))
 			break;
 	}
 
@@ -783,14 +786,14 @@ __CONCAT(fat, __elfN(extract_record))(struct vnode *vp,
 }
 
 static int
-__CONCAT(fat, __elfN(elfpart_extract))(struct image_params *imgp,
-		Elf_Ehdr *elf_part)
+__CONCAT(fat, __elfN(elfpart_extract))
+    (struct image_params *imgp, Elf_Ehdr *elf_part)
 {
 	struct vnode *vp;
 	struct thread *td;
 	const FatElf_FEhdr *header;
 	FatElf_record record;
-	int error = 0; /* default value, used to determine errors in conditions below */
+	int error;
 
 	vp = imgp->vp;
 	td = curthread;
@@ -803,8 +806,8 @@ __CONCAT(fat, __elfN(elfpart_extract))(struct image_params *imgp,
 	}
 
 	error = vn_rdwr(UIO_READ, vp, elf_part, sizeof(*elf_part),
-			record->r_offset, UIO_SYSSPACE, IO_NODELOCKED, td->td_ucred, NOCRED,
-			NULL, td);
+	    record->r_offset, UIO_SYSSPACE, IO_NODELOCKED,
+	    td->td_ucred, NOCRED, NULL, td);
 
 	return error;
 }
@@ -834,7 +837,7 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 			printf("Bad FatElf format, error = %d", error);
 			return ENOEXEC;
 		}
-		hdr = (const Elf_Ehdr *) &elf_part;
+		hdr = (const Elf_Ehdr *)&elf_part;
 	} else {
 		hdr = (const Elf_Ehdr *)imgp->image_header;
 	}
