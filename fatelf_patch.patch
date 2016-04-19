@@ -78,7 +78,7 @@ Index: sys/sys/elf_fat.h
 +#endif /* !_SYS_ELF_FAT_H_ */
 Index: sys/kern/imgact_elf.c
 ===================================================================
---- sys/kern/imgact_elf.c	(revision 297517)
+--- sys/kern/imgact_elf.c	(revision 298278)
 +++ sys/kern/imgact_elf.c	(working copy)
 @@ -40,6 +40,7 @@
  #include <sys/exec.h>
@@ -115,7 +115,7 @@ Index: sys/kern/imgact_elf.c
 +		    IO_NODELOCKED, td->td_ucred, NOCRED, NULL, td);
 +		if (error != 0) {
 +			printf("vn_rdwr error: %d\n", error);
-+			return error;
++			return (error);
 +		}
 +
 +		Elf_Ehdr hdr = {
@@ -132,7 +132,7 @@ Index: sys/kern/imgact_elf.c
 +			break;
 +	}
 +
-+	return (i >= le32toh(fhdr->fe_nrecords)) ? ENOEXEC : 0;
++	return ((i >= le32toh(fhdr->fe_nrecords)) ? (ENOEXEC) : (0));
 +}
 +
 +static int
@@ -152,14 +152,14 @@ Index: sys/kern/imgact_elf.c
 +	error = fatelf_extract_record(vp, header, &record);
 +	if (error != 0) {
 +		printf("fatelf_extract_record error: %d\n", error);
-+		return error;
++		return (error);
 +	}
 +
 +	error = vn_rdwr(UIO_READ, vp, elf_part, sizeof(*elf_part),
 +	    record->r_offset, UIO_SYSSPACE, IO_NODELOCKED,
 +	    td->td_ucred, NOCRED, NULL, td);
 +
-+	return error;
++	return (error);
 +}
 +
 +static int
@@ -180,7 +180,7 @@ Index: sys/kern/imgact_elf.c
 +		error = fatelf_elfpart_extract(imgp, &elf_part);
 +		if (error != 0) {
 +			printf("Bad FatElf format, error = %d", error);
-+			return ENOEXEC;
++			return (ENOEXEC);
 +		}
 +		hdr = (const Elf_Ehdr *)&elf_part;
 +	} else {

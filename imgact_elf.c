@@ -765,7 +765,7 @@ __CONCAT(fat, __elfN(extract_record))
 		    IO_NODELOCKED, td->td_ucred, NOCRED, NULL, td);
 		if (error != 0) {
 			printf("vn_rdwr error: %d\n", error);
-			return error;
+			return (error);
 		}
 
 		Elf_Ehdr hdr = {
@@ -782,7 +782,7 @@ __CONCAT(fat, __elfN(extract_record))
 			break;
 	}
 
-	return (i >= le32toh(fhdr->fe_nrecords)) ? ENOEXEC : 0;
+	return ((i >= le32toh(fhdr->fe_nrecords)) ? (ENOEXEC) : (0));
 }
 
 static int
@@ -802,14 +802,14 @@ __CONCAT(fat, __elfN(elfpart_extract))
 	error = fatelf_extract_record(vp, header, &record);
 	if (error != 0) {
 		printf("fatelf_extract_record error: %d\n", error);
-		return error;
+		return (error);
 	}
 
 	error = vn_rdwr(UIO_READ, vp, elf_part, sizeof(*elf_part),
 	    record->r_offset, UIO_SYSSPACE, IO_NODELOCKED,
 	    td->td_ucred, NOCRED, NULL, td);
 
-	return error;
+	return (error);
 }
 
 static int
@@ -835,7 +835,7 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		error = fatelf_elfpart_extract(imgp, &elf_part);
 		if (error != 0) {
 			printf("Bad FatElf format, error = %d", error);
-			return ENOEXEC;
+			return (ENOEXEC);
 		}
 		hdr = (const Elf_Ehdr *)&elf_part;
 	} else {
