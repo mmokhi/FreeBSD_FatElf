@@ -1,8 +1,8 @@
-Index: sys/sys/elf_fat.h
+Index: elf_fat.h
 ===================================================================
---- sys/sys/elf_fat.h	(nonexistent)
-+++ sys/sys/elf_fat.h	(working copy)
-@@ -0,0 +1,73 @@
+--- elf_fat.h	(nonexistent)
++++ elf_fat.h	(working copy)
+@@ -0,0 +1,74 @@
 +/*-
 + * Copyright (c) 2016 Mahdi Mokhtari.
 + * All rights reserved.
@@ -39,6 +39,7 @@ Index: sys/sys/elf_fat.h
 +#include <sys/elf_common.h>
 +#include <sys/elf_generic.h>
 +#include <sys/elf.h>
++#include <sys/endian.h>
 +
 +/* Values for the magic number bytes. */
 +#define	FATELF_MAG0	0xFa
@@ -48,11 +49,11 @@ Index: sys/sys/elf_fat.h
 +#define	FATELF_MAGIC	"\xFat\x0E\x1f"	/* magic string */
 +#define	FATELF_MAG_LEN	4		/* magic string size */
 +
-+#define	IS_FATELF(fehdr)
-+			((fehdr).fe_magic[EI_MAG0] == FATELF_MAG0 && \
-+			(fehdr).fe_magic[EI_MAG1] == FATELF_MAG1 && \
-+			(fehdr).fe_magic[EI_MAG2] == FATELF_MAG2 && \
-+			(fehdr).fe_magic[EI_MAG3] == FATELF_MAG3)
++#define	IS_FATELF(fehdr) \
++			((fehdr)->fe_magic[EI_MAG0] == FATELF_MAG0 && \
++			(fehdr)->fe_magic[EI_MAG1] == FATELF_MAG1 && \
++			(fehdr)->fe_magic[EI_MAG2] == FATELF_MAG2 && \
++			(fehdr)->fe_magic[EI_MAG3] == FATELF_MAG3)
 +
 +typedef struct {
 +	unsigned char fe_magic[4]; /* always SHOULD BE FATELF_MAGIC */
@@ -76,17 +77,14 @@ Index: sys/sys/elf_fat.h
 +} FatElf_record;
 +
 +#endif /* !_SYS_ELF_FAT_H_ */
-Index: sys/kern/imgact_elf.c
+Index: imgact_elf.c
 ===================================================================
---- sys/kern/imgact_elf.c	(revision 298278)
-+++ sys/kern/imgact_elf.c	(working copy)
-@@ -40,6 +40,7 @@
- #include <sys/exec.h>
- #include <sys/fcntl.h>
- #include <sys/gzio.h>
-+#include <sys/elf_fat.h>
+--- imgact_elf.c	(revision 298278)
++++ imgact_elf.c	(working copy)
+@@ -43,3 +43,4 @@
  #include <sys/imgact.h>
  #include <sys/imgact_elf.h>
++#include "elf_fat.h"
  #include <sys/jail.h>
 @@ -95,6 +96,10 @@
  static int __elfN(load_section)(struct image_params *imgp, vm_offset_t offset,
@@ -127,8 +125,8 @@ Index: sys/kern/imgact_elf.c
 +			.e_phentsize = record->e_phentsize
 +		};
 +
-+		if (__elfN(check_header)(hdr) == 0 &&
-+		    (hdr->e_type == ET_EXEC || hdr->e_type == ET_DYN))
++		if (__elfN(check_header)(&hdr) == 0 &&
++		    (hdr.e_type == ET_EXEC || hdr.e_type == ET_DYN))
 +			break;
 +	}
 +
@@ -149,14 +147,14 @@ Index: sys/kern/imgact_elf.c
 +	td = curthread;
 +	header = (const FatElf_FEhdr *) imgp->image_header;
 +
-+	error = fatelf_extract_record(vp, header, &record);
++	error = __CONCAT(fat, __elfN(extract_record))(vp, header, &record);
 +	if (error != 0) {
-+		printf("fatelf_extract_record error: %d\n", error);
++		printf("__CONCAT(fat, __elfN(extract_record)) error: %d\n", error);
 +		return (error);
 +	}
 +
 +	error = vn_rdwr(UIO_READ, vp, elf_part, sizeof(*elf_part),
-+	    record->r_offset, UIO_SYSSPACE, IO_NODELOCKED,
++	    record.r_offset, UIO_SYSSPACE, IO_NODELOCKED,
 +	    td->td_ucred, NOCRED, NULL, td);
 +
 +	return (error);
@@ -177,7 +175,7 @@ Index: sys/kern/imgact_elf.c
  
 -	hdr = (const Elf_Ehdr *)imgp->image_header;
 +	if (IS_FATELF((const FatElf_FEhdr *)imgp->image_header)) {
-+		error = fatelf_elfpart_extract(imgp, &elf_part);
++		error = __CONCAT(fat, __elfN(elfpart_extract))(imgp, &elf_part);
 +		if (error != 0) {
 +			printf("Bad FatElf format, error = %d", error);
 +			return (ENOEXEC);
